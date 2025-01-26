@@ -168,3 +168,7 @@ synth_output*/
 *.c
 /.bashrc
 wandb/
+copy_tests.py
+copy_trains.py
+remove_npy.py
+test_vocoder.py
