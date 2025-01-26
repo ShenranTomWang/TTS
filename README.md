@@ -17,7 +17,7 @@ export LANG_EMB=1               # set this to 1 if using multilingual inference,
 export SPK_EMB=1                # set this to 1 if multi speaker, 0 otherwise
 python synthesis.py
 ```
-4. After inference, some samples may be too quiet. You can use [`normalize.py`](normalize.py) to normalize audios in a folder.
+4. After inference, some samples may be too quiet or loud. You can use [`normalize.py`](normalize.py) to normalize audios in a folder. It is hard-coded so do check it out.
 5. To train a model, first go to [`configs/experiment`](configs/experiment) to define your own experiment. Take some of our experiment configs for example, `default` is defined in [`configs/train.yaml`](configs/train.yaml). Then run:
 ```shell
 python matcha/train.py experiment=<your-experiment>
