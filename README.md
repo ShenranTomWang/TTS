@@ -1,4 +1,5 @@
 # Developing Multilingual Speech Synthesis System for Ojibwe, Mi'kmaq, and Maliseet
+### Shenran Wang, Changbing Yang, Mike Parkhill, Chad Quinn, Christopher Hammerly, Jian Zhu
 ## Getting Started
 1. install dependencies listed in [`requirements.txt`](requirements.txt)
 2. Compile [`monotonic_align`](matcha/utils/monotonic_align/core.c):  
