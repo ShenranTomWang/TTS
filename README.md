@@ -6,9 +6,10 @@
 ```shell
 python "matcha/utils/monotonic_align/setup.py" build_ext --inplace
 ```
-3. To run inference, use [`synthesis.py`](synthesis.py) (Using environment variables speed up compilation in some compute clusters, compared to using argparse):
+3. To run inference, use [`synthesis.py`](synthesis.py) (Using environment variables speed up compilation in some compute clusters, compared to using argparse) this will generate a python file that syncs to the `WandB`, as most compute clusters may not have internet access:
 ```shell
 export BATCHED_SYNTHESIS=1      # ignore this if you do not want to use batched processing
+export BATCH_SIZE=400
 export MATCHA_CHECKPOINT="path/to/checkpoint.ckpt"  # this is mandatory
 export WANDB_NAME="name of your wandb run"      # this is mandatory
 export Y_FILELIST="path/to/filelists.txt"   # this filelist should contain lines of format wav_filepath|speaker_embedding(if any)|language_embedding(if any)|input_text, mandatory
