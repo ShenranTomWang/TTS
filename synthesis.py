@@ -27,7 +27,7 @@ For Monolingual Synthesis, set environment variable SPK_FLAG_MONOLINGUAL to the 
 
 VOCODER = "Vocos"
 BATCHED_SYNTHESIS = os.getenv("BATCHED_SYNTHESIS") == "1"
-BATCH_SIZE = 400
+BATCH_SIZE = int(os.getenv("BATCH_SIZE"))
 
 data_type = os.getenv("DATA_TYPE")
 DATA_TYPE = utils.get_dtype(data_type)
