@@ -1,4 +1,3 @@
-from lib2to3.fixes import fix_types
 import numpy as np
 import torch
 from tqdm.auto import tqdm
@@ -12,50 +11,35 @@ import synthesis.utils as utils
 import synthesis.io as io
 import synthesis.inference as inference
 
-import os
+import argparse, os
 
-"""
-Synthesis code.
-This script generates a python file that when invoked, syncs all metrics to WandB. Set the run name in environment variable WANDB_NAME
-If you want to perform batched synthesis, please set the environment variable BATCHED_SYNTHESIS to 1, and set BATCH_SIZE below
-There are two vocoders available: Vocos or HiFiGAN. Please set accordingly below in the VOCODER constant
-Y_FILELIST is the path of filelist of all test files
-Set the environment variable MATCHA_CHECKPOINT for path of checkpoint where MatchaTTS gets picked up
-Set environment variables LANG_EMB or SPK_EMB to 1 if the filelist contains language/speaker embeddings
-For Monolingual Synthesis, set environment variable SPK_FLAG_MONOLINGUAL to the corresponding speaker (AT, MJ, JJ, NJ)
-"""
+args = argparse.ArgumentParser()
+args.add_argument("--batch_size", type=int, default=1)
+args.add_argument("--data_type", type=str, default="fp32", choices=["fp16", "bf16", "fp32"])
+args.add_argument("--y_filelist", type=str, required=True, help="Path to filelist of test files")
+args.add_argument("--tts_ckpt", type=str, required=True, help="Path to MatchaTTS checkpoint")
+args.add_argument("--multilingual", default=False, action="store_true", help="Whether current run is multilingual")
+args.add_argument("--multi_speaker", default=False, action="store_true", help="Whether current run is multi-speaker")
+args.add_argument("--mem_file", type=str, default="mem.pickle", help="Memory record file path")
+args.add_argument("--mem_max_entries", type=int, default=100000, help="Maximum number of memory entries")
+args.add_argument("--out_dir", type=str, default="synth_output", help="Output directory for synthesis")
+args.add_argument("--vocos_config", type=str, default="./configs/vocos/vocos-matcha.yaml", help="Path to Vocos config file")
+args.add_argument("--vocos_ckpt", type=str, default="./logs/vocos/multilingual-balanced-dataset/checkpoints/last.ckpt", help="Path to Vocos checkpoint")
+args.add_argument("--wandb_name", type=str, default="TTS", help="Name of the WandB run")
+args.add_argument("--spk_flag_monolingual", type=str, default="AT", help="Speaker flag for monolingual synthesis")
+args = args.parse_args()
+BATCHED_SYNTHESIS = args.batch_size != 1
 
-VOCODER = "Vocos"
-BATCHED_SYNTHESIS = os.getenv("BATCHED_SYNTHESIS") == "1"
-BATCH_SIZE = int(os.getenv("BATCH_SIZE"))
-
-data_type = os.getenv("DATA_TYPE")
-DATA_TYPE = utils.get_dtype(data_type)
+args.data_type = utils.get_dtype(args.data_type)
 
 WANDB_PROJECT = f"TTS"
-wandb_name = os.getenv("WANDB_NAME") + " Batched" if BATCHED_SYNTHESIS else os.getenv("WANDB_NAME")
-wandb_name = wandb_name + f" {data_type}" if DATA_TYPE != None else wandb_name
+wandb_name = args.wandb_name + " Batched" if BATCHED_SYNTHESIS else args.wandb_name
+wandb_name = wandb_name + f" {args.data_type}"
 WANDB_NAME = wandb_name
 WANDB_DATASET = "multilingual-test"
-WANDB_ARCH = f"MatchaTTS: language embedding, {VOCODER}: vanilla"
+WANDB_ARCH = f"MatchaTTS: language embedding, Vocos"
 
-Y_FILELIST = os.getenv("Y_FILELIST")
-OUTPUT_FOLDER = f"synth_output-{WANDB_NAME}"
-SYNC_SAVE_DIR = "./"
-
-MEM_MAX_ENTRIES = 100000
-MEM_FILE_NAME = WANDB_NAME + ".pickle"
-
-MATCHA_CHECKPOINT = os.getenv("MATCHA_CHECKPOINT")
-HIFIGAN_CHECKPOINT = "./matcha/hifigan/g_02500000"
-VOCOS_CHECKPOINT = "./logs/vocos/multilingual-balanced-dataset/checkpoints/last.ckpt"
-
-VOCOS_CONFIG = "./configs/vocos/vocos-matcha.yaml"
-
-LANG_EMB = os.getenv("LANG_EMB") == "1"
-SPK_EMB = os.getenv("SPK_EMB") == "1"
 SPK_FLAGS = ["AT", "MJ", "JJ", "NJ"]
-SPK_FLAG_MONOLINGUAL = os.getenv("SPK_FLAG_MONOLINGUAL")
 SAMPLE_RATE = 22050
 ## Number of ODE Solver steps
 n_timesteps = 10
@@ -69,25 +53,21 @@ device = torch.device(device_str)
 def synthesis():
     count_params = lambda x: f"{sum(p.numel() for p in x.parameters()):,}"
 
-    model = utils.load_model(MATCHA_CHECKPOINT, device, DATA_TYPE)
+    model = utils.load_model(args.tts_ckpt, device, args.data_type)
     print(f"Model loaded! Parameter count: {count_params(model)}")
-    
-    if VOCODER == "HiFiGAN":
-        vocoder = utils.load_vocoder(None, HIFIGAN_CHECKPOINT, device, DATA_TYPE, vocoder_type=VOCODER)
-        denoiser = utils.load_denoiser(vocoder, DATA_TYPE)
-    else:
-        vocoder = utils.load_vocoder(VOCOS_CONFIG, VOCOS_CHECKPOINT, device, DATA_TYPE, vocoder_type=VOCODER)
-        denoiser = None
-    index = utils.get_data_index(SPK_EMB, LANG_EMB)
-    texts = io.parse_filelist_get_text(Y_FILELIST, SPK_EMB, LANG_EMB, sentence_index=index)
+    vocoder = utils.load_vocoder(args.vocos_config, args.vocos_ckpt, device, args.data_type)
+    denoiser = None
+    index = utils.get_data_index(args.multi_speaker, args.multilingual)
+    texts = io.parse_filelist_get_text(args.y_filelist, args.multi_speaker, args.multilingual, sentence_index=index)
 
     outputs, rtfs = [], []
     rtfs_w = []
     metrics = {}
     throughputs = []
     if BATCHED_SYNTHESIS:
-        ckpt = torch.load(MATCHA_CHECKPOINT, map_location=device)
-        hop_length, names, inputs, spks, lang = utils.get_item_batched(ckpt, texts, SPK_EMB, LANG_EMB)
+        ckpt = torch.load(args.tts_ckpt, map_location=device)
+        hop_length, names, inputs, spks, lang = utils.get_item_batched(ckpt, texts, args.multi_speaker, args.multilingual)
+        # compilation runs
         for i in range(5):
             print(f"compile run {i}")
             outputs = inference.batch_synthesis(
@@ -96,7 +76,7 @@ def synthesis():
                 model, 
                 vocoder, 
                 denoiser, 
-                BATCH_SIZE, 
+                args.batch_size, 
                 hop_length, 
                 device, 
                 SAMPLE_RATE, 
@@ -113,7 +93,7 @@ def synthesis():
             model, 
             vocoder, 
             denoiser, 
-            BATCH_SIZE, 
+            args.batch_size, 
             hop_length, 
             device, 
             SAMPLE_RATE, 
@@ -127,8 +107,8 @@ def synthesis():
         for i, output in enumerate(outputs):
             normalized_waveforms = []
             rtf_w = output["rtf_w"]
-            rtf_w = rtf_w / BATCH_SIZE
-            rtf = output["rtf"] / BATCH_SIZE
+            rtf_w = rtf_w / args.batch_size
+            rtf = output["rtf"] / args.batch_size
             throughput = output['throughput']
             for j, wave in enumerate(output['waveform']):
                 try:
@@ -144,7 +124,7 @@ def synthesis():
 
             output['normalized_waveforms'] = normalized_waveforms
             
-            io.save_to_folder_batch(output, OUTPUT_FOLDER, SAMPLE_RATE)
+            io.save_to_folder_batch(output, args.out_dir, SAMPLE_RATE)
             
     else:
         # compilation runs
@@ -195,13 +175,9 @@ def synthesis():
             rtfs_w.append(rtf_w)
             
             utils.pretty_print(output, rtf_w, name)
-            io.save_to_folder(name, output, OUTPUT_FOLDER, SAMPLE_RATE)
+            io.save_to_folder(name, output, args.out_dir, SAMPLE_RATE)
     
     print(f"Experiment: {WANDB_NAME}")
-    
-    # rtfs = rtfs[1:]
-    # rtfs_w = rtfs_w[1:]
-    # throughputs = throughputs[1:]
     
     rtfs_mean = np.mean(rtfs)
     rtfs_std = np.std(rtfs)
@@ -223,9 +199,9 @@ def synthesis():
     print(f'"num_ode_steps": {n_timesteps}, "rtfs_mean": {rtfs_mean}, "rtfs_std": {rtfs_std}, "rtfs_w_mean": {rtfs_w_mean}, "rtfs_w_std": {rtfs_w_std}, "throughput_mean": {throughput_mean}, "thoughput_std": {throughput_std}')
 
     with torch.autocast(device_str, dtype=torch.float32):
-        if LANG_EMB:
+        if args.multilingual:
             for spk_flag in SPK_FLAGS:
-                stoi, pesq, mcd, f0_rmse, las_rmse, vuv_f1, fd = evaluation.evaluate(OUTPUT_FOLDER, Y_FILELIST, spk_flag=spk_flag)
+                stoi, pesq, mcd, f0_rmse, las_rmse, vuv_f1, fd = evaluation.evaluate(args.out_dir, args.y_filelist, spk_flag=spk_flag)
                 
                 metrics[f"{spk_flag}/stoi"] = stoi
                 metrics[f"{spk_flag}/pesq"] = pesq
@@ -237,28 +213,29 @@ def synthesis():
                 
                 print(f'"{spk_flag}/stoi": {stoi}, "{spk_flag}/pesq": {pesq}, "{spk_flag}/mcd": {mcd}, "{spk_flag}/f0_rmse": {f0_rmse}, "{spk_flag}/las_rmse": {las_rmse}, "{spk_flag}/vuv_f1": {vuv_f1}, {spk_flag}/fd": {fd},')
         else:
-            stoi, pesq, mcd, f0_rmse, las_rmse, vuv_f1, fd = evaluation.evaluate(OUTPUT_FOLDER, Y_FILELIST, SPK_FLAG_MONOLINGUAL)
+            stoi, pesq, mcd, f0_rmse, las_rmse, vuv_f1, fd = evaluation.evaluate(args.out_dir, args.y_filelist, args.spk_flag_monolingual)
 
-            metrics[f"{SPK_FLAG_MONOLINGUAL}/stoi"] = stoi
-            metrics[f"{SPK_FLAG_MONOLINGUAL}/pesq"] = pesq
-            metrics[f"{SPK_FLAG_MONOLINGUAL}/mcd"] = mcd
-            metrics[f"{SPK_FLAG_MONOLINGUAL}/f0_rmse"] = f0_rmse
-            metrics[f"{SPK_FLAG_MONOLINGUAL}/las_rmse"] = las_rmse
-            metrics[f"{SPK_FLAG_MONOLINGUAL}/vuv_f1"] = vuv_f1
-            metrics[f"{SPK_FLAG_MONOLINGUAL}/fd"] = fd
+            metrics[f"{args.spk_flag_monolingual}/stoi"] = stoi
+            metrics[f"{args.spk_flag_monolingual}/pesq"] = pesq
+            metrics[f"{args.spk_flag_monolingual}/mcd"] = mcd
+            metrics[f"{args.spk_flag_monolingual}/f0_rmse"] = f0_rmse
+            metrics[f"{args.spk_flag_monolingual}/las_rmse"] = las_rmse
+            metrics[f"{args.spk_flag_monolingual}/vuv_f1"] = vuv_f1
+            metrics[f"{args.spk_flag_monolingual}/fd"] = fd
             
-            print(f'"{SPK_FLAG_MONOLINGUAL}/stoi": {stoi}, "{SPK_FLAG_MONOLINGUAL}/pesq": {pesq}, "{SPK_FLAG_MONOLINGUAL}/mcd": {mcd}, "{SPK_FLAG_MONOLINGUAL}/f0_rmse": {f0_rmse}, "{SPK_FLAG_MONOLINGUAL}/las_rmse": {las_rmse}, "{SPK_FLAG_MONOLINGUAL}/vuv_f1": {vuv_f1}, {SPK_FLAG_MONOLINGUAL}/fd": {fd},')
+            print(f'"{args.spk_flag_monolingual}/stoi": {stoi}, "{args.spk_flag_monolingual}/pesq": {pesq}, "{args.spk_flag_monolingual}/mcd": {mcd}, "{args.spk_flag_monolingual}/f0_rmse": {f0_rmse}, "{args.spk_flag_monolingual}/las_rmse": {las_rmse}, "{args.spk_flag_monolingual}/vuv_f1": {vuv_f1}, {args.spk_flag_monolingual}/fd": {fd},')
     
-    io.save_python_script_with_data(metrics, WANDB_PROJECT, WANDB_NAME, WANDB_ARCH, WANDB_DATASET, device, filename=SYNC_SAVE_DIR + WANDB_NAME.replace(" ", "_") + ".py")
+    io.save_python_script_with_data(metrics, WANDB_PROJECT, WANDB_NAME, WANDB_ARCH, WANDB_DATASET, device, filename=args.out_dir + WANDB_NAME.replace(" ", "_") + ".py")
+    io.save_metrics(metrics, os.path.join(args.out_dir, "metrics.json"))
 
 if __name__ == "__main__":
     if device_str != "cpu":
-        torch.cuda.memory._record_memory_history(max_entries=MEM_MAX_ENTRIES)
-    if DATA_TYPE != None:
-        with torch.autocast(device_str, dtype=DATA_TYPE):
+        torch.cuda.memory._record_memory_history(max_entries=args.mem_max_entries)
+    if args.data_type != None:
+        with torch.autocast(device_str, dtype=args.data_type):
             synthesis()
     else:
         synthesis()
     if device_str != "cpu":
-        torch.cuda.memory._dump_snapshot(MEM_FILE_NAME)
+        torch.cuda.memory._dump_snapshot(args.mem_file)
         torch.cuda.memory._record_memory_history(enabled=None)

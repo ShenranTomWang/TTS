@@ -98,24 +98,14 @@ def compute_waveform_lengths(output: dict, hop_length: int):
     wave_lengths = output["mel_lengths"] * hop_length
     return wave_lengths
 
-def load_vocoder(config_path: str, checkpoint_path: str, device: torch.DeviceObjType, data_type: torch.dtype, vocoder_type: str = "HiFiGAN"):
-    if vocoder_type == "HiFiGAN":
-        h = AttrDict(v1)
-        hifigan = HiFiGAN(h).to(device)
-        if data_type != None:
-            hifigan.to(data_type)
-        hifigan.load_state_dict(torch.load(checkpoint_path, map_location=device)['generator'])
-        _ = hifigan.eval()
-        hifigan.remove_weight_norm()
-        return hifigan
-    elif vocoder_type == "Vocos":
-        vocoder = Vocos.from_hparams(config_path).to(device)
-        checkpoint = torch.load(checkpoint_path, map_location=device)
-        state_dict = checkpoint["state_dict"]
-        vocoder.load_state_dict(state_dict, strict=False)
-        if data_type != None:
-            vocoder.to(data_type)
-        return vocoder
+def load_vocoder(config_path: str, checkpoint_path: str, device: torch.DeviceObjType, data_type: torch.dtype):
+    vocoder = Vocos.from_hparams(config_path).to(device)
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    state_dict = checkpoint["state_dict"]
+    vocoder.load_state_dict(state_dict, strict=False)
+    if data_type != None:
+        vocoder.to(data_type)
+    return vocoder
     
 def load_denoiser(vocoder, data_type: torch.dtype):
     denoiser = Denoiser(vocoder, mode='zeros')
