@@ -25,7 +25,7 @@ Depending on how your inference run is configured, you may want to use different
 ```shell
 python synthesis.py --tts_ckpt <path to tts weights> --y_filelists <path to test filelist> --spk_flag_monolingual <speaker flag> --vocos_ckpt <path to vocos weights> --vocos_config <path to the config .yaml file of vocos>
 ```
-Where `<speaker flag>` is a substring of audio files that uniquely identifies a speaker, such that we can extract samples of only that speaker from all the multilingual and multi-speaker samples, e.g. JJ, NJ, AT, MJ. Note that this arg is mandatory for monolingual synthesis. If your filelist only contains samples from one speaker, consider passing `""`. 
+Where `<speaker flag>` is a substring of audio file names that uniquely identifies a speaker, such that we can extract samples of only that speaker from all the multilingual and multi-speaker samples, e.g. JJ, NJ, AT, MJ. Note that this arg is mandatory for monolingual synthesis. If your filelist only contains samples from one speaker, consider passing `""`. 
 For multilingual synthesis, add `--multilingual` flag. For multi-speaker synthesis, add `--multi_speaker` flag.
 
 #### Normalizing Audio
