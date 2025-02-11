@@ -1,7 +1,10 @@
-import numpy as np
+import json
 import soundfile as sf
 from pathlib import Path
 
+def save_metrics(metrics: dict, filename: str):
+    with open(filename, "w") as f:
+        f.write(json.dumps(metrics, indent=4))
 
 def save_to_folder(filename: str, output: dict, folder: str, sr: int):
     folder = Path(folder)

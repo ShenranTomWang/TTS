@@ -20,11 +20,10 @@ args.add_argument("--y_filelist", type=str, required=True, help="Path to filelis
 args.add_argument("--tts_ckpt", type=str, required=True, help="Path to MatchaTTS checkpoint")
 args.add_argument("--multilingual", default=False, action="store_true", help="Whether current run is multilingual")
 args.add_argument("--multi_speaker", default=False, action="store_true", help="Whether current run is multi-speaker")
-args.add_argument("--mem_file", type=str, default="mem.pickle", help="Memory record file path")
 args.add_argument("--mem_max_entries", type=int, default=100000, help="Maximum number of memory entries")
 args.add_argument("--out_dir", type=str, default="synth_output", help="Output directory for synthesis")
-args.add_argument("--vocos_config", type=str, default="./configs/vocos/vocos-matcha.yaml", help="Path to Vocos config file")
-args.add_argument("--vocos_ckpt", type=str, default="./logs/vocos/multilingual-balanced-dataset/checkpoints/last.ckpt", help="Path to Vocos checkpoint")
+args.add_argument("--vocos_config", type=str, required=True, help="Path to Vocos config file")
+args.add_argument("--vocos_ckpt", type=str, required=True, help="Path to Vocos checkpoint")
 args.add_argument("--wandb_name", type=str, default="TTS", help="Name of the WandB run")
 args.add_argument("--spk_flag_monolingual", type=str, default="AT", help="Speaker flag for monolingual synthesis")
 args = args.parse_args()
@@ -237,5 +236,5 @@ if __name__ == "__main__":
     else:
         synthesis()
     if device_str != "cpu":
-        torch.cuda.memory._dump_snapshot(args.mem_file)
+        torch.cuda.memory._dump_snapshot(os.path.join(args.out_dir, "memory_snapshot.pickle"))
         torch.cuda.memory._record_memory_history(enabled=None)
