@@ -7,6 +7,6 @@ RUN git clone https://github.com/rhasspy/espeak-ng && \
     bash autogen.sh && ./configure && make -j8 && make install && \
     ldconfig
 WORKDIR /
-COPY . ./Matcha-TTS
-RUN pip install --force-reinstall --no-cache-dir -r ./Matcha-TTS/requirements.txt
+COPY . ./TTS
+RUN pip install --force-reinstall --no-cache-dir -r ./TTS/requirements.txt
 RUN pip install gradio==3.48.0 # Breaks with gradio 4
