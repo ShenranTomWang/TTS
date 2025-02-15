@@ -9,15 +9,15 @@ python "matcha/utils/monotonic_align/setup.py" build_ext --inplace
 
 ### Inference
 #### Data Preparation
-Path to your test samples, as well as their speaker/language embeddings and input text should be formatted in each row as follows in a `.txt` file:
+Path to your test samples, as well as their speaker/language id and input text should be formatted in each row as follows in a `.txt` file. For our case, AT is 0, MJ is 1, JJ is 2 and NJ is 3. For languages, Maliseet is 0, Mikmaw is 1 and Ojibwe is 2:
 ```txt
-<path to audio>|<speaker embedding>|<language embedding>|<input text>   # multilingual, multi-speaker
-<path to audio>|<speaker embedding>|<input text>    # monolingual, multi-speaker
-<path to audio>|<language embedding>|<input text>   # multilingual, mono-speaker
+<path to audio>|<speaker id>|<language id>|<input text>   # multilingual, multi-speaker
+<path to audio>|<speaker id>|<input text>    # monolingual, multi-speaker
+<path to audio>|<language id>|<input text>   # multilingual, mono-speaker
 <path to audio>|<input text>        # monolingual, mono-speaker
 ```
 #### Run Inference
-To run inference, use [`synthesis.py`](synthesis.py) This will generate a python file that syncs to `WandB`, as most compute clusters may not have internet access. Metric results will also be saved to a `.json` file, and the memory usage snapshot will also be dumped into a `.pickle` file. The synthesis.py requires path to the TTS model's weights and path to Vocos' weights as args. To view all args, use 
+To run inference, use [`synthesis.py`](synthesis.py). This will generate a python file that syncs to `WandB`, as most compute clusters may not have internet access. Metric results will also be saved to a `.json` file, and the memory usage snapshot will also be dumped into a `.pickle` file. [`synthesis.py`](synthesis.py) requires path to the TTS model's weights and path to Vocos' weights as args. To view all args, use 
 ```shell
 python synthesis.py --help
 ```
@@ -29,7 +29,11 @@ Where `<speaker flag>` is a substring of audio file names that uniquely identifi
 For multilingual synthesis, add `--multilingual` flag. For multi-speaker synthesis, add `--multi_speaker` flag.
 
 #### Normalizing Audio
-After inference, some samples may be too quiet or loud. You can use [`normalize.py`](normalize.py) to normalize audios in a folder. It is hard-coded so do check it out.
+After inference, some samples may be too quiet or loud. You can use [`normalize.py`](normalize.py) to normalize audios in a folder:
+```shell
+python normalize.py --folder <folder of samples to normalize>
+```
+This will create a `normalized/` folder inside your specified folder that contains all the normalized audios.
 
 ### Training
 5. To train a model, first go to [`configs/experiment`](configs/experiment) to define your own experiment. Take some of our experiment configs for example, `default` is defined in [`configs/train.yaml`](configs/train.yaml). Then run:
