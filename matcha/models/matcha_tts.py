@@ -89,7 +89,7 @@ class MatchaTTS(BaseLightningClass):  # 🍵
             3. generated alignment
 
         Args:
-            x (torch.Tensor): batch of texts, converted to a tensor with phoneme embedding ids.
+            x (torch.Tensor): batch of texts, tokenized with phoneme embedding ids.
                 shape: (batch_size, max_text_length)
             x_lengths (torch.Tensor): lengths of texts in batch.
                 shape: (batch_size,)
