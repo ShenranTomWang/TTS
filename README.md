@@ -46,12 +46,25 @@ We thank authors of [Matcha TTS](https://github.com/shivammehta25/Matcha-TTS) fo
 
 ## Citation
 ```
-@inproceedings{
-    indigenous-tts,
-    title={Developing multilingual speech synthesis system for Ojibwe, Mi{\textquoteright}kmaq, and Maliseet},
-    author={Wang, Yang, Parkhill, Quinn, Hammerly and Zhu},
-    booktitle={The 2025 Annual Conference of the Nations of the Americas Chapter of the ACL},
-    year={2025},
-    url={https://openreview.net/forum?id=kPujTsMVQz}
+@inproceedings{wang-etal-2025-developing,
+    title = "Developing multilingual speech synthesis system for {O}jibwe, Mi`kmaq, and Maliseet",
+    author = "Wang, Shenran  and
+      Yang, Changbing  and
+      Parkhill, Michael l  and
+      Quinn, Chad  and
+      Hammerly, Christopher  and
+      Zhu, Jian",
+    editor = "Chiruzzo, Luis  and
+      Ritter, Alan  and
+      Wang, Lu",
+    booktitle = "Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 2: Short Papers)",
+    month = apr,
+    year = "2025",
+    address = "Albuquerque, New Mexico",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2025.naacl-short.69/",
+    pages = "817--826",
+    ISBN = "979-8-89176-190-2",
+    abstract = "We present lightweight flow matching multilingual text-to-speech (TTS) systems for Ojibwe, Mi`kmaq, and Maliseet, three Indigenous languages in North America. Our results show that training a multilingual TTS model on three typologically similar languages can improve the performance over monolingual models, especially when data are scarce. Attention-free architectures are highly competitive with self-attention architecture with higher memory efficiency. Our research provides technical development to language revitalization for low-resource languages but also highlights the cultural gap in human evaluation protocols, calling for a more community-centered approach to human evaluation."
 }
 ```
