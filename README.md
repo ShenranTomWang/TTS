@@ -2,7 +2,14 @@
 ### Shenran Wang, Changbing Yang, Mike Parkhill, Chad Quinn, Christopher Hammerly, Jian Zhu
 ## Getting Started
 ### Build
-Install dependencies listed in [`requirements.txt`](requirements.txt). Alternatively, you can build the environment with [`Dockerfile`](Dockerfile). After that, compile [`monotonic_align`](matcha/utils/monotonic_align/core.c):  
+Install dependencies listed in [`requirements.txt`](requirements.txt). Using `conda`:
+```bash
+conda env create <env_name>
+conda activate <env_name>
+conda install conda-forge::uv
+uv pip install -r requirements.txt
+```
+Alternatively, you can build the environment with [`Dockerfile`](Dockerfile). After that, compile [`monotonic_align`](matcha/utils/monotonic_align/core.c):  
 ```shell
 python "matcha/utils/monotonic_align/setup.py" build_ext --inplace
 ```
