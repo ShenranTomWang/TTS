@@ -8,6 +8,9 @@ import synthesis.utils as utils
 
 @torch.inference_mode()
 def process_text(text: str, device: torch.DeviceObjType):
+    """
+    Tokenize raw text
+    """
     x = torch.tensor(intersperse(text_to_sequence(text, ['ojibwe_cleaners']), 0),dtype=torch.long, device=device)[None]
     x_lengths = torch.tensor([x.shape[-1]],dtype=torch.long, device=device)
     x_phones = sequence_to_text(x.squeeze(0).tolist())
@@ -28,6 +31,19 @@ def synthesise(
     spks: torch.Tensor = None, 
     lang: torch.Tensor = None
 ):
+    """
+    Synthesize using MatchaTTS to produce mel-spectrogram and efficiency measures.
+    Args:
+        - text (dict): dictionary of inputs, contains tokenized text in text['x'] and tokenized length in text['x_lengths'].
+        - model (nn.Module): model object.
+        - n_timesteps (int, optional): number of flow matching timesteps. Do not change this value. Defaults to 10.
+        - temperature (float, optional): temperature for generation, controls randomness in the flow matching process. Defaults to 0.667.
+        - length_scale (float, optional): length scale for generated audio. Defaults to 1.0.
+        - spks (torch.Tensor, optional): speaker index, must be torch.long type. This should be changed accordingly if you are using a multispeaker model. Defaults to None for mono-speaker models.
+        - lang (torch.Tensor, optional): language index, must be torch.long type. This should be changed accordingly if you are using a multilingual model. Defaults to None for mono-lingual models.
+    Returns:
+        (dict): outputs from MatchaTTS. This is only mel-spectrogram and inference efficiency metrics and does not include the waveform.
+    """
     start_t = dt.datetime.now()
     output = model.synthesise(
         text['x'], 
@@ -57,6 +73,32 @@ def batch_synthesis(
     length_scale: float = 1.0,
     n_timesteps: int = 10
 ):
+    """
+    Synthesize waveforms and report efficiency measures.
+    Args:
+        - texts (list[str]): list of raw texts.
+        - names (list[str]): list of output filenames.
+        - model (nn.Module): MatchaTTS model.
+        - vocoder (nn.Module): vocoder model.
+        - denoiser (nn.Module): denoiser model. Can be set to None.
+        - batch_size (int): batch size for synthesis.
+        - hop_length (int): mel-spectrogram hop length.
+        - device (torch,DeviceObjType): device to operate on.
+        - sr (int): sampling rate.
+        - spks (list[int], optional): list of speaker indices corresponding to each text in texts. Defaults to None for mono-speaker models. Must specify for multi-speaker models.
+        - lang (list[int], optional): list of language indices corresponding to each text in texts. Defaults to None for mono-speaker models. Must specify for multi-speaker models.
+        - temperature (float, optional): temperature for generation, controls randomness in the flow matching process. Defaults to 0.667.
+        - length_scale (float, optional): length scale for generated audio. Defaults to 1.0.
+        - n_timesteps (int, optional): number of flow matching timesteps. Do not change this value. Defaults to 10.
+    Returns:
+        (list[dict]): list of outputs from each batch. Each batch's output contains
+            - waveform: trimmed waveforms
+            - waveform_lengths: for batch_size > 1, this indicates where to trim each waveform in the batch.
+            - inference_time: time spent for this batch (efficiency measure)
+            - throughput: throughput of this batch (efficiency measure)
+            - rtf_w: real time factor for this batch (efficiency measure)
+            - names: output file names of this batch (for saving .wav files)
+    """
     outputs = []
 
     for i in range(0, len(texts), batch_size):
@@ -98,6 +140,9 @@ def batch_synthesis(
 
 @torch.inference_mode()
 def to_waveform(mel, denoiser, vocoder):
+    """
+    Compute waveform from mel-spectrogram tensor
+    """
     audio = vocoder(mel).clamp(-1, 1)
     if denoiser != None:
         audio = denoiser(audio.squeeze(0), strength=0.00025).cpu()
